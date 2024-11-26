@@ -2,7 +2,16 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt 
-
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.impute import SimpleImputer
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.model_selection import cross_val_score
+from sklearn.metrics import ConfusionMatrixDisplay
+from sklearn.model_selection import learning_curve
+from sklearn.inspection import permutation_importance
 
 # %%
 df = pd.read_csv ('chemical_compounds.csv')
@@ -26,7 +35,7 @@ df = pd.read_csv ('chemical_compounds.csv')
 # print(df.isnull().sum())
 
 # %%
-import seaborn as sns
+
 
 
 # %%
@@ -49,9 +58,7 @@ X = df.drop(columns=['Class'])
 Y = df['Class']
 
 # %%
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.impute import SimpleImputer
+
 
 # %%
 imputer = SimpleImputer(strategy='constant', fill_value=0) #maybe median
@@ -85,8 +92,6 @@ X_test_scaled = scaler.transform(X_test)
 # print(f"Std of X_train_scaled: {X_train_scaled.std(axis=0)}")
 
 # %%
-from sklearn.svm import SVC
-from sklearn.metrics import accuracy_score, classification_report
 
 # %%
 svm_model = SVC(kernel='rbf', C=1, gamma='scale', random_state=42) #defualts
@@ -118,7 +123,7 @@ print(f"Validation Accuracy: {accuracy_score(y_val, y_val_pred):.2f}")
 # Cross-validation
 
 # %%
-from sklearn.model_selection import cross_val_score
+
 
 cv_scores = cross_val_score(svm_model, X_train_scaled, y_train, cv=5, scoring='accuracy')
 
@@ -128,7 +133,7 @@ print(f"Mean Cross-validation Accuracy: {np.mean(cv_scores):.2f}")
 print(f"Standard Deviation Of Cross-validation Accuracy: {np.std(cv_scores):.2f}")
 
 # %%
-from sklearn.metrics import ConfusionMatrixDisplay
+
 
 ConfusionMatrixDisplay.from_estimator(svm_model, X_test_scaled, y_test)
 
@@ -136,7 +141,7 @@ ConfusionMatrixDisplay.from_estimator(svm_model, X_test_scaled, y_test)
 # Learning curve to analyze overfitting
 
 # %%
-from sklearn.model_selection import learning_curve
+
 
 train_sizes, train_scores, test_scores = learning_curve(
     svm_model, X_train_scaled, y_train, cv=3, n_jobs=-1, train_sizes=np.linspace(0.1, 1.0, 10)
@@ -159,7 +164,6 @@ plt.show()
 # Most important features
 
 # %%
-from sklearn.inspection import permutation_importance
 
 result = permutation_importance(svm_model, X_train_scaled, y_train, n_repeats=10, random_state=69)
 
