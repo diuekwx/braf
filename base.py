@@ -12,6 +12,8 @@ from sklearn.model_selection import cross_val_score
 from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.model_selection import learning_curve
 from sklearn.inspection import permutation_importance
+from sklearn.feature_selection import mutual_info_classif
+import shap
 
 # %%
 # Read in the prepped dataset
@@ -114,6 +116,19 @@ X_test_scaled = scaler.transform(X_test)
 # print(f"Mean of X_train_scaled: {X_train_scaled.mean(axis=0)}")
 # print(f"Std of X_train_scaled: {X_train_scaled.std(axis=0)}")
 
+# %%
+# Mutual_info_classif for finding most relevant features
+# Calculate the mutual information between each feature and the target
+mi = mutual_info_classif(X_train_scaled, y_train)
+
+# DataFrame to store the features and their scores
+mi_df = pd.DataFrame({'Feature': X_train.columns, 'Mutual Information': mi})
+
+# Sort the features by score
+mi_sorted = mi_df.sort_values(by='Mutual Information', ascending=False)
+
+print("Top Features Based On Mutual Information:")
+print(mi_sorted.head(10))
 
 # %%
 # Create our SVM classifier model
@@ -155,6 +170,18 @@ y_val_pred = svm_model.predict(X_val_scaled)
 
 print(f"Validation Accuracy: {accuracy_score(y_val, y_val_pred):.2f}")
 
+# %%
+# SHAP analysis of features
+
+# Explainer for the trained SVM model (100 rows)
+# explainer = shap.KernelExplainer(svm_model.predict, X_train_scaled[:100])
+
+# SHAP values for the test set
+# shap_values = explainer.shap_values(X_test_scaled)
+
+# shap.summary_plot(shap_values, X_test_scaled, feature_names=X_test.columns, plot_type="bar")
+
+# plt.show(block=False)
 
 # %% [markdown]
 # Cross-validation
