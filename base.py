@@ -293,9 +293,6 @@ print(features_sorted.head(n))
 # Use dataset but can expand to reference greater range with PubChem API
 data = pd.read_csv("chemical_compounds.csv")
 
-# Keep 'CID' column for access
-cids = data["CID"]
-
 # Fix coordinate columns
 data[['Coordinate_1', 'Coordinate_2', 'Coordinate_3']] = data['PUBCHEM_COORDINATE_TYPE'].str.split(' ', expand=True)
 
