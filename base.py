@@ -179,7 +179,7 @@ print(f"Accuracy: {accuracy:.2f}")
 
 # %%
 # Create predictions using our SVM model
-y_pred = svm_model.predict(X_test_scaled)
+y_pred = svm_model.predict(X_test_reduced)
 
 
 # Report the accuracy of the model
@@ -193,8 +193,8 @@ print(classification_report(y_test, y_pred))
 
 # %%
 # View the accuracy of the model on the train/test sets
-train_accuracy = svm_model.score(X_train_scaled, y_train)
-test_accuracy = svm_model.score(X_test_scaled, y_test)
+train_accuracy = svm_model.score(X_reduced, y_train)
+test_accuracy = svm_model.score(X_test_reduced, y_test)
 
 
 print(f"Training Accuracy: {train_accuracy:.2f}")
@@ -203,7 +203,7 @@ print(f"Test Accuracy: {test_accuracy:.2f}")
 
 # %%
 # View the accuracy of the model on the validation set
-y_val_pred = svm_model.predict(X_val_scaled)
+y_val_pred = svm_model.predict(X_val_reduced)
 
 
 print(f"Validation Accuracy: {accuracy_score(y_val, y_val_pred):.2f}")
@@ -227,7 +227,7 @@ print(f"Validation Accuracy: {accuracy_score(y_val, y_val_pred):.2f}")
 
 # %%
 # Perform cross-validation to further analyze the model regarding generalization and overfitting
-cv_scores = cross_val_score(svm_model, X_train_scaled, y_train, cv=5, scoring='accuracy')
+cv_scores = cross_val_score(svm_model, X_reduced, y_train, cv=5, scoring='accuracy')
 
 
 print("Cross-validation scores:", cv_scores)
@@ -238,8 +238,8 @@ print(f"Standard Deviation Of Cross-validation Accuracy: {np.std(cv_scores):.2f}
 
 
 # %%
-# View the classification report in a visualized
-ConfusionMatrixDisplay.from_estimator(svm_model, X_test_scaled, y_test)
+# View the classification report in a visualization
+# ConfusionMatrixDisplay.from_estimator(svm_model, X_test_reduced, y_test)
 
 
 # %% [markdown]
@@ -247,24 +247,25 @@ ConfusionMatrixDisplay.from_estimator(svm_model, X_test_scaled, y_test)
 
 
 # %%
-train_sizes, train_scores, test_scores = learning_curve(
-    svm_model, X_train_scaled, y_train, cv=3, n_jobs=-1, train_sizes=np.linspace(0.1, 1.0, 10)
-)
+# Learning curve
+# train_sizes, train_scores, test_scores = learning_curve(
+#     svm_model, X_reduced, y_train, cv=3, n_jobs=-1, train_sizes=np.linspace(0.1, 1.0, 10)
+# )
 
 
-train_mean = train_scores.mean(axis=1)
-test_mean = test_scores.mean(axis=1)
+# train_mean = train_scores.mean(axis=1)
+# test_mean = test_scores.mean(axis=1)
 
-# Plots and displays learning curve
-plt.figure(figsize=(10, 6))
-plt.plot(train_sizes, train_mean, label='Training Score')
-plt.plot(train_sizes, test_mean, label='Test Score')
-plt.xlabel('Training Set Size')
-plt.ylabel('Score')
-plt.legend(loc='best')
-plt.title('Learning Curves For SVM')
-plt.tight_layout()
-plt.show()
+# # Plots and displays learning curve
+# plt.figure(figsize=(10, 6))
+# plt.plot(train_sizes, train_mean, label='Training Score')
+# plt.plot(train_sizes, test_mean, label='Test Score')
+# plt.xlabel('Training Set Size')
+# plt.ylabel('Score')
+# plt.legend(loc='best')
+# plt.title('Learning Curves For SVM')
+# plt.tight_layout()
+# plt.show()
 
 
 # %% [markdown]
@@ -273,19 +274,64 @@ plt.show()
 
 # %%
 # Calculates the most important features with permutation importance
-result = permutation_importance(svm_model, X_train_scaled, y_train, n_repeats=10, random_state=69)
-
+result = permutation_importance(svm_model, X_reduced, y_train, n_repeats=10, random_state=69)
 
 importances = result.importances_mean
 # Stores features along with their importance scores
-features = pd.DataFrame({'Feature': X_train.columns, 'Importance': importances})
-
+features = pd.DataFrame({'Feature': X_reduced.columns, 'Importance': importances})
 
 features_sorted = features.sort_values(by='Importance', ascending=False)
-
 
 # Change n accordingly
 n = 10
 # Outputs the top n features that are sorted based off of their importance score
 print("Top Features By Importance:")
 print(features_sorted.head(n))
+
+# %%
+# Prediction
+# Use dataset but can expand to reference greater range with PubChem API
+data = pd.read_csv("chemical_compounds.csv")
+
+# Keep 'CID' column for access
+cids = data["CID"]
+
+# Fix coordinate columns
+data[['Coordinate_1', 'Coordinate_2', 'Coordinate_3']] = data['PUBCHEM_COORDINATE_TYPE'].str.split(' ', expand=True)
+
+data['Coordinate_1'] = pd.to_numeric(data['Coordinate_1'])
+data['Coordinate_2'] = pd.to_numeric(data['Coordinate_2'])
+data['Coordinate_3'] = pd.to_numeric(data['Coordinate_3'])
+
+data.drop('PUBCHEM_COORDINATE_TYPE', axis= 1, inplace = True)
+
+# Keep relevant columns
+data = data[remaining_features]
+
+# Scale
+scaler = StandardScaler()
+data = scaler.fit_transform(data)
+
+# Revert to pandas
+data = pd.DataFrame(data, columns=remaining_features)
+
+# Read input.txt
+with open("input.txt", "r") as input_file:
+    input = [line.strip() for line in input_file.readlines()]
+
+# Prediction in output.txt
+with open("output.txt", "w") as output_file:
+    # Describing output
+    output_file.write("CID, Classification\n")
+
+    for cid in input:
+        # Find entry to map features according to CSV
+        entry = data[cids == int(cid)]
+
+        # Predict with model
+        try:
+            prediction = svm_model.predict(entry)[0]
+            # Write to output file
+            output_file.write(f"{cid},{prediction}\n")
+        except Exception as e:
+            print(f"Error: {e}")
