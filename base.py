@@ -13,6 +13,7 @@ from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.model_selection import learning_curve
 from sklearn.inspection import permutation_importance
 from sklearn.feature_selection import mutual_info_classif
+from sklearn.feature_selection import VarianceThreshold
 import shap
 
 # %%
@@ -64,6 +65,13 @@ df['Coordinate_3'] = pd.to_numeric(df['Coordinate_3'])
 # Remove original combined coordinate column
 df.drop('PUBCHEM_COORDINATE_TYPE', axis= 1, inplace = True)
 
+#drop columns after we found out estrain importance
+corr_matrix = df.corr()
+e_strain_correlations = corr_matrix["E_strain"].sort_values(ascending=False)
+strong_correlations = e_strain_correlations[abs(e_strain_correlations) > 0.8]
+print(strong_correlations)
+df.drop(['E', 'E_str'], axis= 1, inplace = True)
+
 
 # Create heatmap displaying correlation between features of the dataset
 # corr_matrix = df.corr()
@@ -79,7 +87,7 @@ Y = df['Class']
 
 # %%
 # Impute missing values in order to maintain dataset consistency
-imputer = SimpleImputer(strategy='constant', fill_value=0) #maybe median
+imputer = SimpleImputer(strategy='median') #maybe median
 X = pd.DataFrame(imputer.fit_transform(X), columns=X.columns)
 
 
@@ -111,6 +119,24 @@ X_val_scaled = scaler.transform(X_val)
 X_test_scaled = scaler.transform(X_test)
 
 
+#REMOVING LOW VARIANCE
+threshold = 0.1  
+variance_filter = VarianceThreshold(threshold=threshold)
+X_reduced = variance_filter.fit_transform(X_train_scaled)
+
+
+low_variance_features = X_train.columns[variance_filter.get_support()]
+print("removed low-variance features:", low_variance_features)
+
+remaining_features = X_train.columns[variance_filter.get_support()]
+
+#df w reduced 
+X_reduced = pd.DataFrame(X_reduced, columns=remaining_features)
+
+
+
+
+
 # %%
 # Check for bias from the mean and std error
 # print(f"Mean of X_train_scaled: {X_train_scaled.mean(axis=0)}")
@@ -135,9 +161,21 @@ print(mi_sorted.head(10))
 svm_model = SVC(kernel='rbf', C=1, gamma='scale', random_state=42) #defaults
 
 
-# Train on our scaled sets
-svm_model.fit(X_train_scaled, y_train)
+# Train on our scaled sets ; svm_model.fit(X_train_scaled, y_train)
+# CHANGED TO FIT ON REDUCED
+svm_model.fit(X_reduced, y_train)
 
+X_test_reduced = variance_filter.transform(X_test_scaled)
+X_val_reduced = variance_filter.transform(X_val_scaled)
+X_test_reduced = pd.DataFrame(X_test_reduced, columns=remaining_features)
+X_val_reduced = pd.DataFrame(X_val_reduced, columns=remaining_features)
+
+#reduced test set preidctions
+y_reduced_pred = svm_model.predict(X_test_reduced)
+accuracy = accuracy_score(y_test, y_reduced_pred)
+print(f"Accuracy: {accuracy:.2f}")
+
+# END OF TEST FOR REDUCED COLUMNS 
 
 # %%
 # Create predictions using our SVM model
