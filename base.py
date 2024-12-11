@@ -293,6 +293,9 @@ print(features_sorted.head(n))
 # Use dataset but can expand to reference greater range with PubChem API
 data = pd.read_csv("chemical_compounds.csv")
 
+# Save CID which will be removed later, use to find entry
+cids = data['CID']
+
 # Fix coordinate columns
 data[['Coordinate_1', 'Coordinate_2', 'Coordinate_3']] = data['PUBCHEM_COORDINATE_TYPE'].str.split(' ', expand=True)
 
@@ -325,10 +328,14 @@ with open("output.txt", "w") as output_file:
         # Find entry to map features according to CSV
         entry = data[cids == int(cid)]
 
+        if entry.empty:
+            output_file.write(f"{cid}, No prediction\n")
+            continue
+
         # Predict with model
         try:
             prediction = svm_model.predict(entry)[0]
             # Write to output file
-            output_file.write(f"{cid},{prediction}\n")
+            output_file.write(f"{cid}, {prediction}\n")
         except Exception as e:
             print(f"Error: {e}")
